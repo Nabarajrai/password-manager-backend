@@ -27,22 +27,22 @@ export const registerUser = async (req, res) => {
     return res.status(400).json({ error: "Invalid PIN format" });
   }
 
-  const query = "SELECT email FROM users WHERE email = ?";
-  pool.query(query, [email], async (err, results) => {
-    if (err) {
-      console.error("Error checking email:", err);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-
-    if (results.length > 0) {
-      return res.status(400).json({ error: "Email already exists" });
-    }
-  });
-  //hash password
-  const salt = bcrypt.genSaltSync(10);
-  const hashedPassword = bcrypt.hashSync(password, salt);
-  const values = [fullName, email, hashedPassword, pin];
   try {
+    const query = "SELECT email FROM users WHERE email = ?";
+    pool.query(query, [email], async (err, results) => {
+      if (err) {
+        console.error("Error checking email:", err);
+        return res.status(500).json({ error: "Internal server error" });
+      }
+
+      if (results.length > 0) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+    });
+    //hash password
+    const salt = bcrypt.genSaltSync(10);
+    const hashedPassword = bcrypt.hashSync(password, salt);
+    const values = [fullName, email, hashedPassword, pin];
     const result = await pool.query(
       "INSERT INTO users (full_name, email, password, pin) VALUES (?, ?, ?, ?)",
       values
