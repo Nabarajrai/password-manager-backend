@@ -1,5 +1,6 @@
 import pool from "../db/database.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 //helpers
 import {
   checkEmailValid,
@@ -93,4 +94,60 @@ export const registerUser = async (req, res) => {
     console.error("Error registering user:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
+};
+
+export const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
+  try {
+    // Check if user exists
+    const [userRows] = await pool.query(
+      "SELECT * FROM register_users WHERE email = ?",
+      [email]
+    );
+    if (userRows.length === 0) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    const user = userRows[0];
+    // Check password
+    const isPasswordValid = bcrypt.compareSync(password, user.master_password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user.user_id }, "secret", {
+      expiresIn: "1h",
+    });
+
+    // Set token in cookie (optional)
+    res.cookie("access_token", token, { httpOnly: true, secure: true });
+
+    const { master_password, pin_hash, ...others } = user;
+
+    console.log("user", others);
+
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      data: others,
+    });
+  } catch (error) {
+    console.error("Error logging in user:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const logOutUser = (req, res) => {
+  // Clear the access token cookie
+  res.clearCookie("access_token", {
+    secure: true,
+    sameSite: "none",
+  });
+  return res.status(200).json({ message: "Logout successful" });
 };

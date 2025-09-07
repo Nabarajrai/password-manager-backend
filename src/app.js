@@ -1,9 +1,11 @@
 import express from "express";
+import dotenv from "dotenv";
 //controler
 import authRouter from "./router/auth.js";
 
 const app = express();
 app.use(express.json());
+dotenv.config();
 
 app.get("/", (req, res) => {
   return res.send("hello world");
