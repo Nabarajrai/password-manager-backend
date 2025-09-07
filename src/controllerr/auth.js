@@ -1,4 +1,5 @@
 import pool from "../db/database.js";
+import bcrypt from "bcryptjs";
 //helpers
 import {
   checkEmailValid,
@@ -7,7 +8,7 @@ import {
 } from "../helper/helper.js";
 
 export const registerUser = async (req, res) => {
-  const { fullName, email, password, pin } = req.body;
+  const { fullName, email, password, pin, role_name } = req.body;
 
   if (!fullName || !email || !password || !pin) {
     return res.status(400).json({ error: "All fields are required" });
@@ -27,30 +28,67 @@ export const registerUser = async (req, res) => {
     return res.status(400).json({ error: "Invalid PIN format" });
   }
 
-  try {
-    const query = "SELECT email FROM users WHERE email = ?";
-    pool.query(query, [email], async (err, results) => {
-      if (err) {
-        console.error("Error checking email:", err);
-        return res.status(500).json({ error: "Internal server error" });
-      }
+  if (!role_name) {
+    return res.status(400).json({ error: "Role name is required" });
+  }
 
-      if (results.length > 0) {
-        return res.status(400).json({ error: "Email already exists" });
-      }
-    });
-    //hash password
+  try {
+    // Check if email already exists
+    const [existing] = await pool.query(
+      "SELECT email FROM register_users WHERE email = ?",
+      [email]
+    );
+    if (existing.length > 0) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
+    // Hash password and pin
     const salt = bcrypt.genSaltSync(10);
     const hashedPassword = bcrypt.hashSync(password, salt);
-    const values = [fullName, email, hashedPassword, pin];
-    const result = await pool.query(
-      "INSERT INTO users (full_name, email, password, pin) VALUES (?, ?, ?, ?)",
-      values
+    const pin_hash = bcrypt.hashSync(pin, salt);
+    const values = [fullName, email, hashedPassword, pin_hash];
+
+    // Get role_id for requested role
+    const [roleRows] = await pool.query(
+      "SELECT role_id FROM roles WHERE role_name = ?",
+      [role_name]
     );
-    return res.status(201).json({
-      message: "User registered successfully",
-      userId: result.insertId,
-    });
+    if (!roleRows || roleRows.length === 0) {
+      return res.status(400).json({ error: "Invalid role name" });
+    }
+    const role_id = roleRows[0].role_id;
+
+    // Get role_id for ADMIN assignment (first user_roles row)
+    const [userRoleRows] = await pool.query(
+      "SELECT * FROM user_roles WHERE role_id = ?",
+      [role_id]
+    );
+
+    const role_id_assign = userRoleRows[0]?.role_id;
+
+    if (role_id_assign) {
+      return res.status(400).json({
+        error: "ADMIN role already assigned, you can't create it again",
+      });
+    }
+
+    if (role_name === "ADMIN") {
+      const [result] = await pool.query(
+        "INSERT INTO register_users (username, email, master_password, pin_hash) VALUES (?, ?, ?, ?)",
+        values
+      );
+      const assignRole =
+        "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)";
+      await pool.query(assignRole, [result.insertId, role_id]);
+      return res.status(201).json({
+        message: "User registered successfully",
+        userId: result.insertId,
+      });
+    } else {
+      return res
+        .status(403)
+        .json({ error: "Unauthorized role assignment only ADMIN" });
+    }
   } catch (error) {
     console.error("Error registering user:", error);
     return res.status(500).json({ error: "Internal server error" });

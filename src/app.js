@@ -3,6 +3,7 @@ import express from "express";
 import authRouter from "./router/auth.js";
 
 const app = express();
+app.use(express.json());
 
 app.get("/", (req, res) => {
   return res.send("hello world");
