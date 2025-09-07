@@ -10,7 +10,7 @@ import {
 
 export const registerUser = async (req, res) => {
   const { fullName, email, password, pin, role_name } = req.body;
-  const SALTNUMBER = process.env.GEN_SALT || 10;
+  const SALTNUMBER = parseInt(process.env.GEN_SALT, 10) || 10;
 
   if (!fullName || !email || !password || !pin) {
     return res.status(400).json({ error: "All fields are required" });

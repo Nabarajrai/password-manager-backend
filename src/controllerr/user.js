@@ -1,5 +1,7 @@
 import pool from "../db/database.js";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
+
 import { sendTokenEmail } from "../helper/sendTokenEmail.js";
 export const getAllUsers = async (req, res) => {
   try {
@@ -112,6 +114,54 @@ export const createTempUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating temporary user:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const updatePasswordAndPin = async (req, res) => {
+  const { token, new_password, new_pin } = req.body;
+  const saltRounds = parseInt(process.env.GEN_SALT, 10) || 10;
+
+  if (!token || !new_password || !new_pin) {
+    return res
+      .status(400)
+      .json({ error: "Token, password, and PIN are required" });
+  }
+
+  try {
+    //validation token
+    const [rows] = await pool.query(
+      "SELECT * FROM temporary_users WHERE token = ? AND token_expires_at > NOW()",
+      [token]
+    );
+    if (rows.length === 0) {
+      return res.status(400).json({ error: "Invalid or expired token" });
+    }
+
+    const tempUser = rows[0];
+    console.log("tempo", tempUser);
+    const hashedPassword = bcrypt.hashSync(new_password, saltRounds);
+
+    const hashPin = bcrypt.hashSync(new_pin, saltRounds);
+    const [result] = await pool.query(
+      `INSERT INTO register_users (username, email, master_password, pin_hash) 
+       VALUES (?, ?, ?, ?)`,
+      [tempUser.username, tempUser.email, hashedPassword, hashPin]
+    );
+    await pool.query(
+      "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
+      [result.insertId, tempUser.role_id]
+    );
+    await pool.query("DELETE FROM temporary_users WHERE temp_id = ?", [
+      tempUser.temp_id,
+    ]);
+
+    return res.status(200).json({
+      message: "Password and PIN updated successfully. Account activated!",
+      userId: result.insertId,
+    });
+  } catch (error) {
+    console.error("Error updating password and PIN:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
