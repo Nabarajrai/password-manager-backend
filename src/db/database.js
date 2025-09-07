@@ -2,7 +2,7 @@ import mysql from "mysql2/promise";
 const pool = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "password",
+  password: "papa2055",
   database: "password_manager",
   waitForConnections: true,
   connectionLimit: 10,
@@ -18,5 +18,5 @@ async function testConnection() {
     console.error("Database connection failed:", error);
   }
 }
-
+testConnection();
 export default pool;
