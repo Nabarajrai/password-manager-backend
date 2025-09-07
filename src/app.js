@@ -8,6 +8,9 @@ const app = express();
 app.use(express.json());
 dotenv.config();
 
+const PORT = process.env.PORT || 3000;
+
+console.log(process.env.JWT_SECRET);
 app.get("/", (req, res) => {
   return res.send("hello world");
 });
@@ -15,6 +18,6 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api", userRouter);
 
-app.listen(8080, () => {
-  console.log("Server is running on port 8080");
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });

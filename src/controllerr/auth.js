@@ -10,6 +10,7 @@ import {
 
 export const registerUser = async (req, res) => {
   const { fullName, email, password, pin, role_name } = req.body;
+  const SALTNUMBER = parseInt(process.env.GEN_SALT, 10) || 10;
 
   if (!fullName || !email || !password || !pin) {
     return res.status(400).json({ error: "All fields are required" });
@@ -44,7 +45,7 @@ export const registerUser = async (req, res) => {
     }
 
     // Hash password and pin
-    const salt = bcrypt.genSaltSync(10);
+    const salt = bcrypt.genSaltSync(SALTNUMBER);
     const hashedPassword = bcrypt.hashSync(password, salt);
     const pin_hash = bcrypt.hashSync(pin, salt);
     const values = [fullName, email, hashedPassword, pin_hash];
@@ -98,6 +99,7 @@ export const registerUser = async (req, res) => {
 
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
+  const JWTSECRET = process.env.JWT_SECRET || "secret";
 
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required" });
@@ -121,7 +123,7 @@ export const loginUser = async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user.user_id }, "secret", {
+    const token = jwt.sign({ userId: user.user_id }, `${JWTSECRET}`, {
       expiresIn: "1h",
     });
 
