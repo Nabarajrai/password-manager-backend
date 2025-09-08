@@ -165,3 +165,114 @@ export const updatePasswordAndPin = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const resetPassword = async (req, res) => {
+  const { email, new_password } = req.body;
+  const saltRounds = parseInt(process.env.GEN_SALT, 10) || 10;
+
+  if (!email || !new_password) {
+    return res
+      .status(400)
+      .json({ error: "Email and new password are required" });
+  }
+
+  try {
+    // Check if user exists
+    const [user] = await pool.query(
+      "SELECT * FROM register_users WHERE email = ?",
+      [email]
+    );
+    if (user.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Hash new password
+    const hashedPassword = bcrypt.hashSync(new_password, saltRounds);
+
+    // Update password
+    await pool.query(
+      "UPDATE register_users SET master_password = ? WHERE email = ?",
+      [hashedPassword, email]
+    );
+
+    return res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const resetPin = async (req, res) => {
+  const { email, new_pin } = req.body;
+  const saltRounds = parseInt(process.env.GEN_SALT, 10) || 10;
+
+  if (!email || !new_pin) {
+    return res.status(400).json({ error: "Email and new PIN are required" });
+  }
+
+  try {
+    // Check if user exists
+    const [user] = await pool.query(
+      "SELECT * FROM register_users WHERE email = ?",
+      [email]
+    );
+    if (user.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Hash new PIN
+    const hashPin = bcrypt.hashSync(new_pin, saltRounds);
+
+    // Update PIN
+    await pool.query("UPDATE register_users SET pin_hash = ? WHERE email = ?", [
+      hashPin,
+      email,
+    ]);
+
+    return res.status(200).json({ message: "PIN reset successfully" });
+  } catch (error) {
+    console.error("Error resetting PIN:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const sentResetLink = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  try {
+    // Check if user exists
+    const [user] = await pool.query(
+      "SELECT * FROM register_users WHERE email = ?",
+      [email]
+    );
+    if (user.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Generate reset token
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+
+    await pool.query(
+      "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)",
+      [email, token, expiresAt]
+    );
+
+    // Send email with reset link
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    await sendEmail(
+      email,
+      "Password Reset",
+      `Click here to reset your password: ${resetLink}`
+    );
+
+    return res.status(200).json({ message: "Reset link sent successfully" });
+  } catch (error) {
+    console.error("Error sending reset link:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
