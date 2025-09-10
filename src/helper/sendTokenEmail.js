@@ -10,8 +10,8 @@ export const sendTokenEmail = async (
   toEmail,
   username,
   link,
-  temp_password,
-  temp_pin
+  subject,
+  descrip
 ) => {
   const HOST = process.env.HOST || "smtp.gmail.com";
   try {
@@ -30,10 +30,10 @@ export const sendTokenEmail = async (
     const mailOptions = {
       from: `"Salapa Bikas Bank" <${process.env.USER_MAIL}>`,
       to: toEmail,
-      subject: "Set Your Master Password and PIN",
+      subject: `${subject}`,
       html: `
-                <p>Hi ${username},Your temporary password: ${temp_password} and temporay pin : ${temp_pin}</p>
-                <p>You have been created as a new user. Please click the link below to set your master password and PIN:</p>
+                <p>Hi ${username}, your user id : ${toEmail}</p>
+                <p>${descrip}</p>
                 <a href="${link}">${link}</a>
                 <p>This link will expire in 24 hours.</p>
                 <p>If you did not expect this email, please ignore it.</p>

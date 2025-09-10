@@ -41,7 +41,6 @@ out
 .temp
 .vscode
 .idea
-.DS_Store
 
 # Optional: lock files if using only one package manager
 # yarn.lock
