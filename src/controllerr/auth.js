@@ -119,7 +119,7 @@ export const loginUser = async (req, res) => {
     // Check password
     const isPasswordValid = bcrypt.compareSync(password, user.master_password);
     if (!isPasswordValid) {
-      return res.status(401).json({ error: "Invalid email or password" });
+      return res.status(401).json({ error: "Invalid  password" });
     }
 
     // Generate JWT token

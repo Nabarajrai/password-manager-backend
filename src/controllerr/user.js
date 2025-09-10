@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { sendTokenEmail } from "../helper/sendTokenEmail.js";
 export const getAllUsers = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM register_users");
+    const [rows] = await pool.query("SELECT * FROM register_users ");
     res.status(200).json(rows);
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -92,13 +92,15 @@ export const createTempUser = async (req, res) => {
 
     // Send token link
     const link = `${URL}/set-password?token=${token}`;
-    const emailSent = await sendTokenEmail(
+    const emailParameters = {
       email,
       username,
       link,
-      temp_password,
-      pin_hash
-    );
+      subject: "Set Your Master Password and PIN",
+      descrip:
+        "You have been created as a new user. Please click the link below to set your master password and PIN:",
+    };
+    const emailSent = await sendTokenEmail(emailParameters);
 
     if (!emailSent) {
       const query = "DELETE FROM temporary_users WHERE temp_id = ?";
@@ -167,7 +169,7 @@ export const updatePasswordAndPin = async (req, res) => {
 };
 
 export const resetPassword = async (req, res) => {
-  const { email, new_password } = req.body;
+  const { new_password } = req.body;
   const saltRounds = parseInt(process.env.GEN_SALT, 10) || 10;
 
   if (!email || !new_password) {
@@ -177,10 +179,21 @@ export const resetPassword = async (req, res) => {
   }
 
   try {
+    const [rows] = await pool.query(
+      "SELECT * FROM password_resets WHERE token =? AND token_expires_at > NOW()",
+      [token]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ error: "Invalid or expired toekn" });
+    }
+
+    const resetPassUser = rows[0];
+
     // Check if user exists
     const [user] = await pool.query(
       "SELECT * FROM register_users WHERE email = ?",
-      [email]
+      [resetPassUser.email]
     );
     if (user.length === 0) {
       return res.status(404).json({ error: "User not found" });
@@ -190,11 +203,15 @@ export const resetPassword = async (req, res) => {
     const hashedPassword = bcrypt.hashSync(new_password, saltRounds);
 
     // Update password
-    await pool.query(
+    const [result] = await pool.query(
       "UPDATE register_users SET master_password = ? WHERE email = ?",
       [hashedPassword, email]
     );
-
+    if (result) {
+      await pool.query("DELETE FROM password_resets WHERE resetPass_id =? ", [
+        resetPassUser.resetPass_id,
+      ]);
+    }
     return res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
     console.error("Error resetting password:", error);
@@ -203,7 +220,7 @@ export const resetPassword = async (req, res) => {
 };
 
 export const resetPin = async (req, res) => {
-  const { email, new_pin } = req.body;
+  const { token, new_pin } = req.body;
   const saltRounds = parseInt(process.env.GEN_SALT, 10) || 10;
 
   if (!email || !new_pin) {
@@ -211,10 +228,19 @@ export const resetPin = async (req, res) => {
   }
 
   try {
+    const [rows] = pool.query(
+      "SELECT * FROM pin_reset WHERE token = ? AND token_expires_at > NOW()",
+      [token]
+    );
+
+    if (rows.length === 0) {
+      res.status(400).json({ error: "Invalid or expired Token" });
+    }
+    const resetPinUser = rows[0];
     // Check if user exists
     const [user] = await pool.query(
       "SELECT * FROM register_users WHERE email = ?",
-      [email]
+      [resetPinUser.email]
     );
     if (user.length === 0) {
       return res.status(404).json({ error: "User not found" });
@@ -224,11 +250,15 @@ export const resetPin = async (req, res) => {
     const hashPin = bcrypt.hashSync(new_pin, saltRounds);
 
     // Update PIN
-    await pool.query("UPDATE register_users SET pin_hash = ? WHERE email = ?", [
-      hashPin,
-      email,
-    ]);
-
+    const [result] = await pool.query(
+      "UPDATE register_users SET pin_hash = ? WHERE email = ?",
+      [hashPin, resetPinUser.email]
+    );
+    if (result) {
+      await pool.query("DELETE FROM pin_reset WHERE resetPin_id = ?", [
+        resetPin_id,
+      ]);
+    }
     return res.status(200).json({ message: "PIN reset successfully" });
   } catch (error) {
     console.error("Error resetting PIN:", error);
@@ -236,8 +266,8 @@ export const resetPin = async (req, res) => {
   }
 };
 
-export const sentResetLink = async (req, res) => {
-  const { email } = req.body;
+export const sentResetPasswordLink = async (req, res) => {
+  const { username, email } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: "Email is required" });
@@ -263,16 +293,74 @@ export const sentResetLink = async (req, res) => {
     );
 
     // Send email with reset link
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-    await sendEmail(
+    const resetLink = `${process.env.URL}/reset-password?token=${token}`;
+    const emailOptions = {
       email,
-      "Password Reset",
-      `Click here to reset your password: ${resetLink}`
-    );
+      username,
+      resetLink,
+      subject: "Password Reset",
+      descrip: "Click here to reset your password",
+    };
+    const sentEmail = await sendTokenEmail(emailOptions);
+
+    if (!sentEmail) {
+      await pool.query("DELETE FROM password_resets WHERE resetPass_id = ?", [
+        resetPass_id,
+      ]);
+      return res
+        .status(400)
+        .json({ error: "Failed to send email. Try again later.s" });
+    }
 
     return res.status(200).json({ message: "Reset link sent successfully" });
   } catch (error) {
     console.error("Error sending reset link:", error);
     return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const sentResetPinLink = async (req, res) => {
+  const { email, username } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email is Required" });
+  }
+  try {
+    const [user] = await pool.query(
+      "SELECT * FROM register_users WHERE email = ?",
+      [email]
+    );
+    if (user.length === 0) {
+      return res.status(400).json({ error: "User not found" });
+    }
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 3600000);
+    await pool.query(
+      "INSERT INTO pin_reset (email, token, expires_at) VALUES (?, ?, ?)",
+      [email, token, expiresAt]
+    );
+
+    //send link with reset link
+
+    const resetLink = `${process.env.URL}/reset-pin?token=${token}`;
+    const emailOptions = {
+      email,
+      username,
+      resetLink,
+      subject: "Pin Reset",
+      descrip: "Click here to reset your Pin",
+    };
+    const sentEmail = await sendTokenEmail(emailOptions);
+    if (!sentEmail) {
+      await pool.query("DELETE FROM pin_reset WHERE resetPin_id = ?", [
+        resetPin_id,
+      ]);
+      return res
+        .status(400)
+        .json({ error: "Failed to send email. Try again later.s" });
+    }
+    return res.status(200).json({ message: "Reset link sent successfully" });
+  } catch (e) {
+    console.error("Error sending reset link", e);
+    return res.status(400).json({ error: "Internal server error" });
   }
 };
