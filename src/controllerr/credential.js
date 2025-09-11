@@ -226,3 +226,37 @@ export const updatePassword = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const deletePassword = async (req, res) => {
+  try {
+    const { user_id, password_id } = req.body;
+
+    // 1. Check if password exists
+    const [pwRows] = await pool.query(
+      "SELECT user_id AS owner_id FROM passwords WHERE password_id = ?",
+      [password_id]
+    );
+
+    if (!pwRows.length) {
+      return res.status(404).json({ error: "Password not found" });
+    }
+
+    const ownerId = pwRows[0].owner_id;
+
+    // 2. Only owner can delete
+    if (user_id !== ownerId) {
+      return res
+        .status(403)
+        .json({ error: "Only the owner can delete this password" });
+    }
+
+    // 3. Delete the password (shared entries will be removed automatically via ON DELETE CASCADE)
+    await pool.query("DELETE FROM passwords WHERE password_id = ?", [
+      password_id,
+    ]);
+
+    return res.json({ message: "Password deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
