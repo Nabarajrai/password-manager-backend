@@ -6,6 +6,10 @@ import {
   deleteUser,
   createTempUser,
   updatePasswordAndPin,
+  sentResetPasswordLink,
+  sentResetPinLink,
+  resetPassword,
+  resetPin,
 } from "../controllerr/user.js";
 
 const router = express.Router();
@@ -15,5 +19,9 @@ router.get("/getUserById", getUserById);
 router.delete("/delete-user", deleteUser);
 router.post("/create-user-by-admin", createTempUser);
 router.post("/update-password-pin", updatePasswordAndPin);
+router.post("/send-reset-password-link", sentResetPasswordLink);
+router.post("/send-reset-pin-link", sentResetPinLink);
+router.patch("/reset-password", resetPassword);
+router.patch("/reset-pin", resetPin);
 
 export default router;
