@@ -89,7 +89,7 @@ export const registerUser = async (req, res) => {
     } else {
       return res
         .status(403)
-        .json({ error: "Unauthorized role assignment only ADMIN" });
+        .json({ error: "Unauthorized role assignment only one ADMIN" });
     }
   } catch (error) {
     console.error("Error registering user:", error);

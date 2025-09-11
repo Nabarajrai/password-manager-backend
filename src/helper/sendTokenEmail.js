@@ -2,17 +2,17 @@ import nodemailer from "nodemailer";
 
 /**
  * Send temporary password link to user email
- * @param {string} toEmail - Recipient email
+ * @param {string} email - Recipient email
  * @param {string} username - Recipient name
  * @param {string} link - Token link for setting password and PIN
  */
-export const sendTokenEmail = async (
-  toEmail,
+export const sendTokenEmail = async ({
+  email,
   username,
   link,
   subject,
-  descrip
-) => {
+  descrip,
+}) => {
   const HOST = process.env.HOST || "smtp.gmail.com";
   try {
     // Create transporter
@@ -29,10 +29,10 @@ export const sendTokenEmail = async (
     // Email options
     const mailOptions = {
       from: `"Salapa Bikas Bank" <${process.env.USER_MAIL}>`,
-      to: toEmail,
+      to: `${email}`,
       subject: `${subject}`,
       html: `
-                <p>Hi ${username}, your user id : ${toEmail}</p>
+                <p>Hi ${username}, your user id : ${email}</p>
                 <p>${descrip}</p>
                 <a href="${link}">${link}</a>
                 <p>This link will expire in 24 hours.</p>
