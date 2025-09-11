@@ -11,6 +11,7 @@ import {
   resetPassword,
   resetPin,
 } from "../controllerr/user.js";
+// import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 

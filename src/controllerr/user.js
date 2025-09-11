@@ -32,8 +32,6 @@ export const getUserById = async (req, res) => {
 
 export const deleteUser = async (req, res) => {
   const { id } = req.query;
-  const requestingUserId = req.user?.user_id; // Assuming you have auth middleware
-
   try {
     // 1. Check if user exists
     const [userRows] = await pool.query(
@@ -48,7 +46,7 @@ export const deleteUser = async (req, res) => {
     const user = userRows[0];
 
     // 2. Prevent ADMIN from deleting themselves
-    if (user.role_name === "ADMIN" && user.user_id === requestingUserId) {
+    if (user.role_name === "ADMIN") {
       return res
         .status(403)
         .json({ error: "ADMIN cannot delete their own account" });
