@@ -1,11 +1,15 @@
 import express from "express";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+
 //controler
 import authRouter from "./router/auth.js";
 import userRouter from "./router/user.js";
+import passwordRouter from "./router/credential.js";
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
@@ -17,6 +21,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api", userRouter);
+app.use("/api", passwordRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

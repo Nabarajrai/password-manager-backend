@@ -1,12 +1,14 @@
 import pool from "../db/database.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+
 //helpers
 import {
   checkEmailValid,
   checkPasswordValid,
   checkPinValid,
 } from "../helper/helper.js";
+import { sendTokenEmail } from "../helper/sendTokenEmail.js";
 
 export const registerUser = async (req, res) => {
   const { fullName, email, password, pin, role_name } = req.body;
@@ -152,4 +154,53 @@ export const logOutUser = (req, res) => {
     sameSite: "none",
   });
   return res.status(200).json({ message: "Logout successful" });
+};
+
+export const forgotAdminPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const JWTSECRET = process.env.JWT_SECRET || "secret";
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    // 1. Check if ADMIN exists
+    const [userRows] = await pool.query(
+      "SELECT u.user_id, u.username, u.email FROM register_users u JOIN user_roles ur ON u.user_id = ur.user_id JOIN roles r ON ur.role_id = r.role_id WHERE u.email = ? AND r.role_name = 'ADMIN'",
+      [email]
+    );
+
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: "ADMIN user not found" });
+    }
+
+    const adminUser = userRows[0];
+
+    // 2. Generate a short-lived JWT token (valid 15 min)
+    const resetToken = jwt.sign({ userId: adminUser.user_id }, JWTSECRET, {
+      expiresIn: "15m",
+    });
+
+    // 3. Create reset link
+    const resetLink = `${process.env.URL}/admin-reset-password/${resetToken}`;
+    const emailParameters = {
+      email: adminUser.email,
+      username: adminUser.username,
+      resetLink,
+      subject: "Set Your Master Password and PIN",
+      descrip:
+        "You have been created as a new user. Please click the link below to set your master password and PIN:",
+      hour: 60 / 4,
+    };
+    const emailSent = await sendTokenEmail(emailParameters);
+    if (!emailSent) {
+      res.status(500).json({ error: "Failed to send email" });
+    }
+
+    return res.json({ message: "Password reset link sent to email" });
+  } catch (err) {
+    console.error("Error in forgotAdminPassword:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
 };

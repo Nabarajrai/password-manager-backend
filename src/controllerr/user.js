@@ -31,19 +31,41 @@ export const getUserById = async (req, res) => {
 };
 
 export const deleteUser = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.query;
   try {
+    // 1. Check if user exists
+    const [userRows] = await pool.query(
+      "SELECT u.user_id, r.role_name FROM register_users u JOIN user_roles ur ON u.user_id = ur.user_id JOIN roles r ON ur.role_id = r.role_id WHERE u.user_id = ?",
+      [id]
+    );
+
+    if (!userRows.length) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const user = userRows[0];
+
+    // 2. Prevent ADMIN from deleting themselves
+    if (user.role_name === "ADMIN") {
+      return res
+        .status(403)
+        .json({ error: "ADMIN cannot delete their own account" });
+    }
+
+    // 3. Delete user
     const [result] = await pool.query(
       "DELETE FROM register_users WHERE user_id = ?",
       [id]
     );
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.status(200).json({ message: "User deleted successfully" });
+
+    return res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
     console.error("Error deleting user:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
