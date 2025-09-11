@@ -159,3 +159,70 @@ export const removeSharedPassword = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const updatePassword = async (req, res) => {
+  try {
+    const {
+      user_id,
+      password_id,
+      title,
+      username,
+      encrypted_password,
+      url,
+      notes,
+      category_id,
+    } = req.body;
+
+    // 1. Check if password exists & get owner
+    const [pwRows] = await pool.query(
+      "SELECT user_id AS owner_id FROM passwords WHERE password_id = ?",
+      [password_id]
+    );
+
+    if (!pwRows.length) {
+      return res.status(404).json({ error: "Password not found" });
+    }
+
+    const ownerId = pwRows[0].owner_id;
+
+    // 2. Permission check
+    let allowed = user_id === ownerId;
+
+    if (!allowed) {
+      const [shareRows] = await pool.query(
+        "SELECT permission_level FROM shared_passwords WHERE password_id = ? AND shared_with_user_id = ?",
+        [password_id, user_id]
+      );
+
+      if (shareRows.length && shareRows[0].permission_level === "EDIT") {
+        allowed = true;
+      }
+    }
+
+    if (!allowed) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to update this password" });
+    }
+
+    // 3. Update everything (owner or editor both allowed)
+    await pool.query(
+      `UPDATE passwords 
+       SET title = ?, username = ?, encrypted_password = ?, url = ?, notes = ?, category_id = ?, updated_at = NOW()
+       WHERE password_id = ?`,
+      [
+        title,
+        username,
+        encrypted_password,
+        url,
+        notes,
+        category_id,
+        password_id,
+      ]
+    );
+
+    return res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
