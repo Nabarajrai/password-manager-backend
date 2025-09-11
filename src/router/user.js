@@ -11,18 +11,22 @@ import {
   resetPassword,
   resetPin,
 } from "../controllerr/user.js";
-// import { authenticateToken } from "../middleware/authMiddleware.js";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/allUsers", getAllUsers);
-router.get("/getUserById", getUserById);
-router.delete("/delete-user", deleteUser);
-router.post("/create-user-by-admin", createTempUser);
-router.post("/update-password-pin", updatePasswordAndPin);
-router.post("/send-reset-password-link", sentResetPasswordLink);
-router.post("/send-reset-pin-link", sentResetPinLink);
-router.patch("/reset-password", resetPassword);
-router.patch("/reset-pin", resetPin);
+router.get("/allUsers", authenticateToken, getAllUsers);
+router.get("/getUserById", authenticateToken, getUserById);
+router.delete("/delete-user", authenticateToken, deleteUser);
+router.post("/create-user-by-admin", authenticateToken, createTempUser);
+router.post("/update-password-pin", authenticateToken, updatePasswordAndPin);
+router.post(
+  "/send-reset-password-link",
+  authenticateToken,
+  sentResetPasswordLink
+);
+router.post("/send-reset-pin-link", authenticateToken, sentResetPinLink);
+router.patch("/reset-password", authenticateToken, resetPassword);
+router.patch("/reset-pin", authenticateToken, resetPin);
 
 export default router;
