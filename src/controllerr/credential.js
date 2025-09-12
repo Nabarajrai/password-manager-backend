@@ -1,4 +1,5 @@
 import pool from "../db/database.js";
+import bcrypt from "bcryptjs";
 
 export const createPasswordEntry = async (req, res) => {
   const {
@@ -22,6 +23,9 @@ export const createPasswordEntry = async (req, res) => {
     return res.status(400).json({ error: "All fields are required" });
   }
   try {
+    const SALTNUMBER = parseInt(process.env.GEN_SALT, 10) || 10;
+    const salt = bcrypt.genSaltSync(SALTNUMBER);
+    const hashedPassword = bcrypt.hashSync(encrypted_password, salt);
     const [result] = await pool.query(
       `INSERT INTO passwords 
        (user_id, category_id, title, username, encrypted_password, url, notes)
@@ -31,7 +35,7 @@ export const createPasswordEntry = async (req, res) => {
         category_id || null,
         title,
         username || null,
-        encrypted_password,
+        hashedPassword,
         url || null,
         notes || null,
       ]
@@ -204,21 +208,16 @@ export const updatePassword = async (req, res) => {
         .status(403)
         .json({ error: "Not authorized to update this password" });
     }
+    const SALTNUMBER = parseInt(process.env.GEN_SALT, 10) || 10;
+    const salt = bcrypt.genSaltSync(SALTNUMBER);
+    const hashedPassword = bcrypt.hashSync(encrypted_password, salt);
 
     // 3. Update everything (owner or editor both allowed)
     await pool.query(
       `UPDATE passwords 
        SET title = ?, username = ?, encrypted_password = ?, url = ?, notes = ?, category_id = ?, updated_at = NOW()
        WHERE password_id = ?`,
-      [
-        title,
-        username,
-        encrypted_password,
-        url,
-        notes,
-        category_id,
-        password_id,
-      ]
+      [title, username, hashedPassword, url, notes, category_id, password_id]
     );
 
     return res.json({ message: "Password updated successfully" });
@@ -256,6 +255,54 @@ export const deletePassword = async (req, res) => {
     ]);
 
     return res.json({ message: "Password deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getAllPasswords = async (req, res) => {
+  const { userId } = req.query;
+  try {
+    const sql = `
+      SELECT
+        p.password_id,
+        p.user_id AS owner_user_id,
+        p.title,
+        p.username,
+        p.encrypted_password,
+        p.url,
+        p.notes,
+        p.created_at,
+        p.updated_at,
+        'OWNER' AS access_type,
+        NULL AS shared_by_user_id,
+        'EDIT' AS permission_level
+      FROM passwords p
+      WHERE p.user_id = ?
+
+      UNION ALL
+
+      SELECT
+        p.password_id,
+        p.user_id AS owner_user_id,
+        p.title,
+        p.username,
+        p.encrypted_password,
+        p.url,
+        p.notes,
+        p.created_at,
+        p.updated_at,
+        'SHARED' AS access_type,
+        sp.shared_by_user_id,
+        sp.permission_level
+      FROM shared_passwords sp
+      JOIN passwords p ON sp.password_id = p.password_id
+      WHERE sp.shared_with_user_id = ?
+        AND p.user_id <> ?;
+    `;
+
+    const [rows] = await pool.query(sql, [userId, userId, userId]);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -6,6 +6,7 @@ import {
   removeSharedPassword,
   updatePassword,
   deletePassword,
+  getAllPasswords,
 } from "../controllerr/credential.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
@@ -20,5 +21,6 @@ router.delete(
 );
 router.put("/update-password", authenticateToken, updatePassword);
 router.delete("/remove-password", authenticateToken, deletePassword);
+router.get("/get-all-passwords", authenticateToken, getAllPasswords);
 
 export default router;

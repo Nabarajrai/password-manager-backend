@@ -190,8 +190,8 @@ export const forgotAdminPassword = async (req, res) => {
       resetLink,
       subject: "Set Your Master Password and PIN",
       descrip:
-        "You have been created as a new user. Please click the link below to set your master password and PIN:",
-      hour: 60 / 4,
+        "Please click the link below to set your master password and PIN:",
+      hour: 0.15,
     };
     const emailSent = await sendTokenEmail(emailParameters);
     if (!emailSent) {
