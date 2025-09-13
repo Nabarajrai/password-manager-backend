@@ -16,7 +16,7 @@ import { authenticateToken } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 router.get("/allUsers", authenticateToken, getAllUsers);
-router.get("/getUserById", authenticateToken, getUserById);
+router.get("/getUserById/:id", authenticateToken, getUserById);
 router.delete("/delete-user", authenticateToken, deleteUser);
 router.post("/create-user-by-admin", authenticateToken, createTempUser);
 router.post("/update-password-pin", authenticateToken, updatePasswordAndPin);
