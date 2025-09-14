@@ -5,11 +5,41 @@ import bcrypt from "bcryptjs";
 import { sendTokenEmail } from "../helper/sendTokenEmail.js";
 export const getAllUsers = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM register_users ");
-    res.status(200).json(rows);
+    const [allUsers] = await pool.query(`
+      SELECT 
+          ru.user_id AS id,
+          ru.username,
+          ru.email,
+          ru.created_at,
+          ru.updated_at,
+          r.role_id,
+          r.role_name,
+          'registered' AS type
+      FROM register_users ru
+      LEFT JOIN user_roles ur ON ru.user_id = ur.user_id
+      LEFT JOIN roles r ON ur.role_id = r.role_id
+
+      UNION ALL
+
+      SELECT
+          tu.temp_id AS id,
+          tu.username,
+          tu.email,
+          tu.created_at,
+          NULL AS updated_at,
+          r.role_id,
+          r.role_name,
+          'temporary' AS type
+      FROM temporary_users tu
+      LEFT JOIN roles r ON tu.role_id = r.role_id
+
+      ORDER BY created_at DESC
+    `);
+
+    return res.status(200).json({ users: allUsers });
   } catch (error) {
     console.error("Error fetching users:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
