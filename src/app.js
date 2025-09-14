@@ -7,6 +7,8 @@ import cors from "cors";
 import authRouter from "./router/auth.js";
 import userRouter from "./router/user.js";
 import passwordRouter from "./router/credential.js";
+import useCategoriesRouter from "./router/categories.js";
+import useRoles from "./router/roles.js";
 
 const app = express();
 app.use(express.json());
@@ -28,6 +30,8 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api", userRouter);
 app.use("/api", passwordRouter);
+app.use("/api", useCategoriesRouter);
+app.use("/api", useRoles);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
