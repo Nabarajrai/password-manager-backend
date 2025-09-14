@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 
 //controler
 import authRouter from "./router/auth.js";
@@ -14,7 +15,12 @@ dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 
-console.log(process.env.JWT_SECRET);
+app.use(
+  cors({
+    origin: "http://localhost:5173", // frontend URL
+    credentials: true, // allow cookies if needed
+  })
+);
 app.get("/", (req, res) => {
   return res.send("hello world");
 });

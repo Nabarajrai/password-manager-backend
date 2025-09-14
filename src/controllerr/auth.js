@@ -15,25 +15,34 @@ export const registerUser = async (req, res) => {
   const SALTNUMBER = parseInt(process.env.GEN_SALT, 10) || 10;
 
   if (!fullName || !email || !password || !pin) {
-    return res.status(400).json({ error: "All fields are required" });
+    return res
+      .status(400)
+      .json({ error: "All fields are required", status: "invalid" });
   }
 
   if (!checkEmailValid(email)) {
-    return res.status(400).json({ error: "Invalid email format" });
+    return res
+      .status(400)
+      .json({ error: "Invalid email format", status: "invalid" });
   }
   if (!checkPasswordValid(password)) {
     return res.status(400).json({
       error:
         "Password must be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character",
+      status: "invalid",
     });
   }
 
   if (!checkPinValid(pin)) {
-    return res.status(400).json({ error: "Invalid PIN format" });
+    return res
+      .status(400)
+      .json({ error: "Invalid PIN format", status: "invalid" });
   }
 
   if (!role_name) {
-    return res.status(400).json({ error: "Role name is required" });
+    return res
+      .status(400)
+      .json({ error: "Role name is required", status: "error" });
   }
 
   try {
@@ -43,7 +52,9 @@ export const registerUser = async (req, res) => {
       [email]
     );
     if (existing.length > 0) {
-      return res.status(400).json({ error: "Email already exists" });
+      return res
+        .status(400)
+        .json({ error: "Email already exists", status: "error" });
     }
 
     // Hash password and pin
@@ -58,7 +69,9 @@ export const registerUser = async (req, res) => {
       [role_name]
     );
     if (!roleRows || roleRows.length === 0) {
-      return res.status(400).json({ error: "Invalid role name" });
+      return res
+        .status(400)
+        .json({ error: "Invalid role name", status: "error" });
     }
     const role_id = roleRows[0].role_id;
 
@@ -73,6 +86,7 @@ export const registerUser = async (req, res) => {
     if (role_id_assign) {
       return res.status(400).json({
         error: "ADMIN role already assigned, you can't create it again",
+        status: "error",
       });
     }
 
@@ -87,6 +101,7 @@ export const registerUser = async (req, res) => {
       return res.status(201).json({
         message: "User registered successfully",
         userId: result.insertId,
+        status: "success",
       });
     } else {
       return res
@@ -104,7 +119,9 @@ export const loginUser = async (req, res) => {
   const JWTSECRET = process.env.JWT_SECRET || "secret";
 
   if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
+    return res
+      .status(400)
+      .json({ error: "Email and password are required", status: "invalid" });
   }
 
   try {
@@ -114,14 +131,18 @@ export const loginUser = async (req, res) => {
       [email]
     );
     if (userRows.length === 0) {
-      return res.status(401).json({ error: "Invalid email or password" });
+      return res
+        .status(401)
+        .json({ error: "Invalid email or password", status: "invalid" });
     }
 
     const user = userRows[0];
     // Check password
     const isPasswordValid = bcrypt.compareSync(password, user.master_password);
     if (!isPasswordValid) {
-      return res.status(401).json({ error: "Invalid  password" });
+      return res
+        .status(401)
+        .json({ error: "Invalid email or password", status: "invalid" });
     }
 
     // Generate JWT token
@@ -134,16 +155,17 @@ export const loginUser = async (req, res) => {
 
     const { master_password, pin_hash, ...others } = user;
 
-    console.log("user", others);
-
     return res.status(200).json({
       message: "Login successful",
       token,
       data: others,
+      status: "success",
     });
   } catch (error) {
     console.error("Error logging in user:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", status: "error" });
   }
 };
 
@@ -153,7 +175,9 @@ export const logOutUser = (req, res) => {
     secure: true,
     sameSite: "none",
   });
-  return res.status(200).json({ message: "Logout successful" });
+  return res
+    .status(200)
+    .json({ message: "Logout successful", status: "success" });
 };
 
 export const forgotAdminPassword = async (req, res) => {
