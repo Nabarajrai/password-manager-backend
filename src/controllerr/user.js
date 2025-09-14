@@ -18,10 +18,19 @@ export const getAllUsers = async (req, res) => {
       FROM register_users ru
       LEFT JOIN user_roles ur ON ru.user_id = ur.user_id
       LEFT JOIN roles r ON ur.role_id = r.role_id
+      ORDER BY created_at DESC
+    `);
 
-      UNION ALL
+    return res.status(200).json({ users: allUsers });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
 
-      SELECT
+export const getAllTempUsers = async (req, res) => {
+  try {
+    const [tempUsers] = await pool.query(` SELECT
           tu.temp_id AS id,
           tu.username,
           tu.email,
@@ -31,14 +40,10 @@ export const getAllUsers = async (req, res) => {
           r.role_name,
           'temporary' AS type
       FROM temporary_users tu
-      LEFT JOIN roles r ON tu.role_id = r.role_id
-
-      ORDER BY created_at DESC
-    `);
-
-    return res.status(200).json({ users: allUsers });
+      LEFT JOIN roles r ON tu.role_id = r.role_id`);
+    return res.status(200).json({ users: tempUsers });
   } catch (error) {
-    console.error("Error fetching users:", error);
+    console.error("Error fetching temporary users:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
