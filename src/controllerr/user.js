@@ -462,3 +462,26 @@ export const sentResetPinLink = async (req, res) => {
     return res.status(400).json({ error: "User in pin reset process mode" });
   }
 };
+
+export const deleteTempUser = async (req, res) => {
+  const { id } = req.query;
+  try {
+    // 1. Check if user exists
+    const [userRows] = await pool.query(
+      "SELECT * FROM temporary_users WHERE temp_id = ?",
+      [id]
+    );
+    if (!userRows.length) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // 2. Delete user
+    await pool.query("DELETE FROM temporary_users WHERE temp_id = ?", [id]);
+    return res
+      .status(200)
+      .json({ message: " Temporary  deleted successfully", status: "success" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};

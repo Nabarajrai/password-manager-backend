@@ -57,7 +57,7 @@ export const sendTokenEmail = async ({
                             </p>
 
                             <p style="margin:0 0 18px;font-size:15px;color:#374151;line-height:1.5;">
-                              We received a request to reset credentials for the account: <strong style="color:#111827">${email}</strong>.
+                              Your register account: <strong style="color:#111827">${email}</strong>.
                             </p>
 
                             <p style="margin:0 0 18px;font-size:15px;color:#374151;line-height:1.5;">
