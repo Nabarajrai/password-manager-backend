@@ -20,7 +20,7 @@ router.get("/allUsers", authenticateToken, getAllUsers);
 router.get("/getUserById/:id", authenticateToken, getUserById);
 router.delete("/delete-user", authenticateToken, deleteUser);
 router.post("/create-user-by-admin", authenticateToken, createTempUser);
-router.post("/update-password-pin", authenticateToken, updatePasswordAndPin);
+router.post("/update-password-pin", updatePasswordAndPin);
 router.post(
   "/send-reset-password-link",
   authenticateToken,

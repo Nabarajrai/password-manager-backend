@@ -242,6 +242,7 @@ export const updatePasswordAndPin = async (req, res) => {
       return res.status(200).json({
         message: "Password and PIN updated successfully. Account activated!",
         userId: result.insertId,
+        status: "success",
       });
     }
   } catch (error) {
