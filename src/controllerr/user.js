@@ -380,7 +380,7 @@ export const sentResetPasswordLink = async (req, res) => {
       const emailOptions = {
         email,
         username,
-        resetLink,
+        link: resetLink,
         subject: "Password Reset",
         descrip: "Click here to reset your password",
         hour: 1,
@@ -436,7 +436,7 @@ export const sentResetPinLink = async (req, res) => {
       const emailOptions = {
         email,
         username,
-        resetLink,
+        link: resetLink,
         subject: "Pin Reset",
         descrip: "Click here to reset your Pin",
         hour: 1,
