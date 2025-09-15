@@ -106,7 +106,6 @@ export const deleteUser = async (req, res) => {
 
 export const createTempUser = async (req, res) => {
   const { username, email, temp_password, pin_hash, role_id } = req.body;
-  const URL = process.env.URL;
 
   if (!username || !email || !temp_password || !pin_hash || !role_id) {
     return res.status(400).json({ error: "All fields are required" });
@@ -148,7 +147,8 @@ export const createTempUser = async (req, res) => {
     const [result] = await pool.query(query, values);
 
     // Send token link
-    const link = `${URL}/set-password?token=${token}`;
+    const link = `${process.env.URL}/set-password?token=${token}`;
+    console.log("link", link);
     const emailParameters = {
       email,
       username,
