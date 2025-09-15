@@ -127,9 +127,19 @@ export const loginUser = async (req, res) => {
   try {
     // Check if user exists
     const [userRows] = await pool.query(
-      "SELECT * FROM register_users WHERE email = ?",
+      `SELECT 
+      u.user_id,
+      u.username,
+      u.email,
+      u.master_password,   -- ✅ add this!
+      r.role_name
+   FROM register_users u
+   JOIN user_roles ur ON u.user_id = ur.user_id
+   JOIN roles r ON ur.role_id = r.role_id
+   WHERE u.email = ?`,
       [email]
     );
+
     if (userRows.length === 0) {
       return res
         .status(401)
@@ -153,12 +163,10 @@ export const loginUser = async (req, res) => {
     // Set token in cookie (optional)
     res.cookie("access_token", token, { httpOnly: true, secure: true });
 
-    const { master_password, pin_hash, ...others } = user;
-
     return res.status(200).json({
       message: "Login successful",
       token,
-      data: others,
+      data: user,
       status: "success",
     });
   } catch (error) {
