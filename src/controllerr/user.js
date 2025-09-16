@@ -485,3 +485,26 @@ export const deleteTempUser = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const getUserCounts = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT r.role_name AS title, COUNT(*) AS number
+      FROM register_users u
+      JOIN user_roles ur ON u.user_id = ur.user_id
+      JOIN roles r ON ur.role_id = r.role_id
+      GROUP BY r.role_name;
+    `);
+
+    // calculate total from role counts
+    const total = rows.reduce((sum, role) => sum + role.number, 0);
+
+    // put total at the beginning
+    const result = [{ title: "total", number: total }, ...rows];
+
+    res.json(result);
+  } catch (err) {
+    console.error("Error fetching counts:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
