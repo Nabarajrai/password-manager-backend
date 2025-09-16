@@ -28,7 +28,7 @@ router.post(
   authenticateToken,
   sentResetPasswordLink
 );
-router.post("/send-reset-pin-link", authenticateToken, sentResetPasswordLink);
+router.post("/send-reset-pin-link", authenticateToken, sentResetPinLink);
 router.patch("/reset-password", resetPassword);
 router.patch("/reset-pin", resetPin);
 router.get("/all-temp-users", authenticateToken, getAllTempUsers);
