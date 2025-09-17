@@ -1,5 +1,7 @@
 import pool from "../db/database.js";
 import bcrypt from "bcryptjs";
+//helpers
+import { decryptPassword, encryptPassword } from "../helper/passwordHelper.js";
 
 export const createPasswordEntry = async (req, res) => {
   const {
@@ -12,20 +14,11 @@ export const createPasswordEntry = async (req, res) => {
     category_id,
   } = req.body;
 
-  if (
-    !title ||
-    !username ||
-    !encrypted_password ||
-    !url ||
-    !notes ||
-    !category_id
-  ) {
+  if (!title || !username || !encrypted_password || !url || !category_id) {
     return res.status(400).json({ error: "All fields are required" });
   }
   try {
-    const SALTNUMBER = parseInt(process.env.GEN_SALT, 10) || 10;
-    const salt = bcrypt.genSaltSync(SALTNUMBER);
-    const hashedPassword = bcrypt.hashSync(encrypted_password, salt);
+    const hashedPassword = encryptPassword(encrypted_password);
     const [result] = await pool.query(
       `INSERT INTO passwords 
        (user_id, category_id, title, username, encrypted_password, url, notes)
@@ -208,9 +201,7 @@ export const updatePassword = async (req, res) => {
         .status(403)
         .json({ error: "Not authorized to update this password" });
     }
-    const SALTNUMBER = parseInt(process.env.GEN_SALT, 10) || 10;
-    const salt = bcrypt.genSaltSync(SALTNUMBER);
-    const hashedPassword = bcrypt.hashSync(encrypted_password, salt);
+    const hashedPassword = encryptPassword(encrypted_password);
 
     // 3. Update everything (owner or editor both allowed)
     await pool.query(
@@ -261,9 +252,14 @@ export const deletePassword = async (req, res) => {
 };
 
 export const getAllPasswords = async (req, res) => {
-  const { userId } = req.query;
   try {
+    const userId = Number(req.query.id);
+    if (!userId) {
+      return res.status(400).json({ error: "Missing or invalid userId" });
+    }
+
     const sql = `
+      -- Owned passwords
       SELECT
         p.password_id,
         p.user_id AS owner_user_id,
@@ -274,14 +270,18 @@ export const getAllPasswords = async (req, res) => {
         p.notes,
         p.created_at,
         p.updated_at,
+        c.name AS category_name,
         'OWNER' AS access_type,
         NULL AS shared_by_user_id,
+        NULL AS shared_by_name,
         'EDIT' AS permission_level
       FROM passwords p
+      LEFT JOIN categories c ON p.category_id = c.category_id
       WHERE p.user_id = ?
 
       UNION ALL
 
+      -- Shared passwords
       SELECT
         p.password_id,
         p.user_id AS owner_user_id,
@@ -292,18 +292,28 @@ export const getAllPasswords = async (req, res) => {
         p.notes,
         p.created_at,
         p.updated_at,
+        c.name AS category_name,
         'SHARED' AS access_type,
         sp.shared_by_user_id,
+        u.username AS shared_by_name,
         sp.permission_level
       FROM shared_passwords sp
       JOIN passwords p ON sp.password_id = p.password_id
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      LEFT JOIN register_users u ON sp.shared_by_user_id = u.user_id
       WHERE sp.shared_with_user_id = ?
         AND p.user_id <> ?;
     `;
 
     const [rows] = await pool.query(sql, [userId, userId, userId]);
-    res.json(rows);
+    const decryptedRows = rows.map((row) => ({
+      ...row,
+      encrypted_password: decryptPassword(row.encrypted_password), // decrypt before sending
+    }));
+
+    res.json(decryptedRows ?? []);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error in getAllPasswords:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
