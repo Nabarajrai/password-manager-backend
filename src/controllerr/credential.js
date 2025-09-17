@@ -262,6 +262,7 @@ export const getAllPasswords = async (req, res) => {
       -- Owned passwords
       SELECT
         p.password_id,
+        c.category_id,
         p.user_id AS owner_user_id,
         p.title,
         p.username,
@@ -274,6 +275,8 @@ export const getAllPasswords = async (req, res) => {
         'OWNER' AS access_type,
         NULL AS shared_by_user_id,
         NULL AS shared_by_name,
+        NULL AS shared_with_user_id,
+        NULL AS share_id,
         'EDIT' AS permission_level
       FROM passwords p
       LEFT JOIN categories c ON p.category_id = c.category_id
@@ -284,6 +287,7 @@ export const getAllPasswords = async (req, res) => {
       -- Shared passwords
       SELECT
         p.password_id,
+        c.category_id,
         p.user_id AS owner_user_id,
         p.title,
         p.username,
@@ -296,9 +300,11 @@ export const getAllPasswords = async (req, res) => {
         'SHARED' AS access_type,
         sp.shared_by_user_id,
         u.username AS shared_by_name,
+        sp.shared_with_user_id,
+        sp.share_id,
         sp.permission_level
       FROM shared_passwords sp
-      JOIN passwords p ON sp.password_id = p.password_id
+      LEFT JOIN passwords p ON sp.password_id = p.password_id
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN register_users u ON sp.shared_by_user_id = u.user_id
       WHERE sp.shared_with_user_id = ?
@@ -306,14 +312,17 @@ export const getAllPasswords = async (req, res) => {
     `;
 
     const [rows] = await pool.query(sql, [userId, userId, userId]);
+
     const decryptedRows = rows.map((row) => ({
       ...row,
-      encrypted_password: decryptPassword(row.encrypted_password), // decrypt before sending
+      encrypted_password: row.encrypted_password
+        ? decryptPassword(row.encrypted_password)
+        : null,
     }));
 
-    res.json(decryptedRows ?? []);
+    return res.json(decryptedRows ?? []);
   } catch (err) {
     console.error("Error in getAllPasswords:", err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
