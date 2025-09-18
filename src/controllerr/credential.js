@@ -258,6 +258,11 @@ export const getAllPasswords = async (req, res) => {
       return res.status(400).json({ error: "Missing or invalid userId" });
     }
 
+    const limit = Number(req.query.limit) || 10;
+    const search = req.query.search ? `%${req.query.search}%` : "%";
+    const category = req.query.category ? `%${req.query.category}%` : "%";
+
+    // SQL for fetching rows
     const sql = `
       -- Owned passwords
       SELECT
@@ -280,7 +285,9 @@ export const getAllPasswords = async (req, res) => {
         'EDIT' AS permission_level
       FROM passwords p
       LEFT JOIN categories c ON p.category_id = c.category_id
-      WHERE p.user_id = ?
+      WHERE p.user_id = ? 
+        AND p.title LIKE ?
+        AND c.name LIKE ?
 
       UNION ALL
 
@@ -307,11 +314,55 @@ export const getAllPasswords = async (req, res) => {
       LEFT JOIN passwords p ON sp.password_id = p.password_id
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN register_users u ON sp.shared_by_user_id = u.user_id
-      WHERE sp.shared_with_user_id = ?
-        AND p.user_id <> ?;
+      WHERE sp.shared_with_user_id = ? 
+        AND p.user_id <> ? 
+        AND p.title LIKE ?
+        AND c.name LIKE ?
+
+      ORDER BY created_at DESC
+      LIMIT ?;
     `;
 
-    const [rows] = await pool.query(sql, [userId, userId, userId]);
+    // SQL for counting total rows (without limit)
+    const countSql = `
+      SELECT COUNT(*) AS total
+      FROM (
+        SELECT p.password_id
+        FROM passwords p
+        LEFT JOIN categories c ON p.category_id = c.category_id
+        WHERE p.user_id = ? AND p.title LIKE ? AND c.name LIKE ?
+
+        UNION ALL
+
+        SELECT p.password_id
+        FROM shared_passwords sp
+        LEFT JOIN passwords p ON sp.password_id = p.password_id
+        LEFT JOIN categories c ON p.category_id = c.category_id
+        WHERE sp.shared_with_user_id = ? AND p.user_id <> ? AND p.title LIKE ? AND c.name LIKE ?
+      ) AS combined;
+    `;
+
+    // Run both queries
+    const [rows] = await pool.query(sql, [
+      userId,
+      search,
+      category,
+      userId,
+      userId,
+      search,
+      category,
+      limit,
+    ]);
+
+    const [countResult] = await pool.query(countSql, [
+      userId,
+      search,
+      category,
+      userId,
+      userId,
+      search,
+      category,
+    ]);
 
     const decryptedRows = rows.map((row) => ({
       ...row,
@@ -320,7 +371,10 @@ export const getAllPasswords = async (req, res) => {
         : null,
     }));
 
-    return res.json(decryptedRows ?? []);
+    return res.json({
+      total: countResult[0]?.total || 0,
+      data: decryptedRows ?? [],
+    });
   } catch (err) {
     console.error("Error in getAllPasswords:", err);
     return res.status(500).json({ error: "Internal server error" });
