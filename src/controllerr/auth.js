@@ -236,3 +236,53 @@ export const forgotAdminPassword = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const pinServiceStatus = async (req, res) => {
+  const { email, pin } = req.body;
+
+  try {
+    // Validate request body
+    if (!email || !pin) {
+      return res.status(400).json({
+        status: "error",
+        error: "Email and PIN are required",
+      });
+    }
+
+    // Look up user by email
+    const [rows] = await pool.query(
+      "SELECT user_id, pin_hash FROM register_users WHERE email = ?",
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        status: "error",
+        error: "User not found",
+      });
+    }
+
+    const user = rows[0];
+
+    // Validate PIN against hash
+    const isPinValid = await bcrypt.compare(pin, user.pin_hash);
+    if (!isPinValid) {
+      return res.status(401).json({
+        status: "invalid",
+        error: "Invalid PIN",
+      });
+    }
+
+    // Success response
+    return res.status(200).json({
+      status: "success",
+      message: "PIN service status retrieved successfully",
+    });
+  } catch (err) {
+    console.error("Error checking PIN service status:", err);
+    return res.status(500).json({
+      status: "error",
+      error: "Internal server error",
+    });
+  }
+};
