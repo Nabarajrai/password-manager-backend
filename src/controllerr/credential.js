@@ -271,7 +271,6 @@ export const getAllPasswords = async (req, res) => {
         p.user_id AS owner_user_id,
         p.title,
         p.username,
-        p.encrypted_password,
         p.url,
         p.notes,
         p.created_at,
@@ -298,7 +297,6 @@ export const getAllPasswords = async (req, res) => {
         p.user_id AS owner_user_id,
         p.title,
         p.username,
-        p.encrypted_password,
         p.url,
         p.notes,
         p.created_at,
@@ -364,19 +362,47 @@ export const getAllPasswords = async (req, res) => {
       category,
     ]);
 
-    const decryptedRows = rows.map((row) => ({
-      ...row,
-      encrypted_password: row.encrypted_password
-        ? decryptPassword(row.encrypted_password)
-        : null,
-    }));
+    // const decryptedRows = rows.map((row) => ({
+    //   ...row,
+    //   encrypted_password: row.encrypted_password
+    //     ? decryptPassword(row.encrypted_password)
+    //     : null,
+    // }));
 
     return res.json({
       total: countResult[0]?.total || 0,
-      data: decryptedRows ?? [],
+      data: rows ?? [],
     });
   } catch (err) {
     console.error("Error in getAllPasswords:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+export const getPasswordById = async (req, res) => {
+  try {
+    const { userId, passwordId } = req.query;
+
+    if (!userId || !passwordId) {
+      return res.status(400).json({ error: "Missing userId or passwordId" });
+    }
+
+    const sql = `SELECT * FROM passwords WHERE password_id = ? AND user_id = ? LIMIT 1;`;
+    // ⚡ FIX: order of params must match placeholders (password_id first, then user_id)
+    const [rows] = await pool.query(sql, [passwordId, userId]);
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: "Password not found" });
+    }
+
+    const row = rows[0];
+    const decrypted = decryptPassword(row.encrypted_password);
+
+    return res.json({
+      decrypted_password: decrypted,
+      message: "Password retrieved successfully",
+    });
+  } catch (err) {
+    console.error("Error in password see or copy:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
