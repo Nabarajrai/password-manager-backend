@@ -380,7 +380,7 @@ export const getAllPasswords = async (req, res) => {
 };
 export const getPasswordById = async (req, res) => {
   try {
-    const { userId, passwordId } = req.body;
+    const { userId, passwordId } = req.query;
 
     if (!userId || !passwordId) {
       return res.status(400).json({ error: "Missing userId or passwordId" });
@@ -399,6 +399,7 @@ export const getPasswordById = async (req, res) => {
 
     return res.json({
       decrypted_password: decrypted,
+      message: "Password retrieved successfully",
     });
   } catch (err) {
     console.error("Error in password see or copy:", err);
