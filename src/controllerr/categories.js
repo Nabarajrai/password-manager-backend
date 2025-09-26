@@ -59,12 +59,12 @@ export const deleteCategory = async (req, res) => {
 };
 
 export const createCategory = async (req, res) => {
-  const { name } = req.body;
+  const { name, userId } = req.body;
 
   try {
     const [result] = await pool.query(
-      "INSERT INTO categories (name) VALUES (?)",
-      [name]
+      "INSERT INTO categories (name,user_id) VALUES (?,?)",
+      [name, userId]
     );
 
     res.status(201).json({
