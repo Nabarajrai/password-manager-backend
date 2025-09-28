@@ -508,3 +508,43 @@ export const getUserCounts = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const updateUser = async (req, res) => {
+  const { id } = req.params;
+  const { username, email } = req.body;
+
+  if (!username || !email) {
+    return res.status(400).json({ error: "Username and email are required" });
+  }
+  try {
+    // Check if user exists
+    const [userRows] = await pool.query(
+      "SELECT * FROM register_users WHERE user_id = ?",
+      [id]
+    );
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    // Check if email is already in use by another user
+    const [emailRows] = await pool.query(
+      "SELECT * FROM register_users WHERE email = ? AND user_id != ?",
+      [email, id]
+    );
+    if (emailRows.length > 0) {
+      return res.status(409).json({ error: "Email already in use" });
+    }
+
+    // Update user details
+    const [result] = await pool.query(
+      "UPDATE register_users SET username = ?, email = ?, updated_at = NOW() WHERE user_id = ?",
+      [username, email, id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(500).json({ error: "Failed to update user" });
+    }
+    return res.status(200).json({ message: "User updated successfully" });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
