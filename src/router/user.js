@@ -13,6 +13,7 @@ import {
   getAllTempUsers,
   deleteTempUser,
   getUserCounts,
+  updateUser,
 } from "../controllerr/user.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
@@ -34,5 +35,6 @@ router.patch("/reset-pin", resetPin);
 router.get("/all-temp-users", authenticateToken, getAllTempUsers);
 router.delete("/delete-temp-user", authenticateToken, deleteTempUser);
 router.get("/user-counts", authenticateToken, getUserCounts);
+router.patch("/update-user/:id", authenticateToken, updateUser);
 
 export default router;
