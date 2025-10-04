@@ -306,7 +306,7 @@ export const resetPin = async (req, res) => {
   const saltRounds = parseInt(process.env.GEN_SALT, 10) || 10;
 
   if (!token || !new_pin) {
-    return res.status(400).json({ error: "Email and new PIN are required" });
+    return res.status(400).json({ error: "Token and new PIN are required" });
   }
 
   try {
