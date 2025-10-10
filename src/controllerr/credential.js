@@ -59,6 +59,8 @@ export const sharePasswordEntry = async (req, res) => {
     if (!pwRows.length) {
       return res.status(404).json({ error: "Password not found" });
     }
+    console.log("pwRows:", pwRows);
+    console.log("owner_id:", pwRows[0]);
     const ownerId = pwRows[0].owner_id;
 
     // 3. Verify if user_id is allowed (owner or has EDIT permission)
@@ -77,6 +79,11 @@ export const sharePasswordEntry = async (req, res) => {
         .status(403)
         .json({ error: "Not authorized to share this password" });
     }
+    // if (allowed) {
+    //   return res
+    //     .status(400)
+    //     .json({ error: "Cannot share password with owner" });
+    // }
 
     // 4. Check if this password is already shared with the same user
     const [existing] = await pool.query(
@@ -122,8 +129,6 @@ export const removeSharedPassword = async (req, res) => {
     }
 
     const { password_id, shared_with_user_id } = shareRows[0];
-    console.log("Password ID:", password_id);
-    console.log("Shared With User ID:", shared_with_user_id);
 
     // 2. Get the owner of the password
     const [pwRows] = await pool.query(

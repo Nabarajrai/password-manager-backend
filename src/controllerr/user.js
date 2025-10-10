@@ -48,22 +48,22 @@ export const getAllTempUsers = async (req, res) => {
   }
 };
 
-export const getUserById = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const [rows] = await pool.query(
-      "SELECT * FROM register_users WHERE user_id = ?",
-      [id]
-    );
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.status(200).json(rows[0]);
-  } catch (error) {
-    console.error("Error fetching user:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-};
+// export const getUserById = async (req, res) => {
+//   const { id } = req.params;
+//   try {
+//     const [rows] = await pool.query(
+//       "SELECT * FROM register_users WHERE user_id = ?",
+//       [id]
+//     );
+//     if (rows.length === 0) {
+//       return res.status(404).json({ error: "User not found" });
+//     }
+//     res.status(200).json(rows[0]);
+//   } catch (error) {
+//     console.error("Error fetching user:", error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// };
 
 export const deleteUser = async (req, res) => {
   const { id } = req.query;
@@ -148,7 +148,6 @@ export const createTempUser = async (req, res) => {
 
     // Send token link
     const link = `${process.env.URL}/set-password?token=${token}`;
-    console.log("link", link);
     const emailParameters = {
       email,
       username,
@@ -199,7 +198,6 @@ export const updatePasswordAndPin = async (req, res) => {
     }
 
     const tempUser = rows[0];
-    console.log("tempo", tempUser);
     const hashedPassword = bcrypt.hashSync(new_password, saltRounds);
 
     const hashPin = bcrypt.hashSync(new_pin, saltRounds);
@@ -386,14 +384,15 @@ export const sentResetPasswordLink = async (req, res) => {
         hour: 1,
       };
       const sentEmail = await sendTokenEmail(emailOptions);
+      console.log("sentEmail", result);
 
       if (!sentEmail) {
         await pool.query("DELETE FROM password_resets WHERE resetPass_id = ?", [
-          resultresetPass_id,
+          result.insertId,
         ]);
         return res
           .status(400)
-          .json({ error: "Failed to send email. Try again later.s" });
+          .json({ error: "Failed to send email. Try again later" });
       } else {
         return res
           .status(200)
@@ -444,11 +443,11 @@ export const sentResetPinLink = async (req, res) => {
       const sentEmail = await sendTokenEmail(emailOptions);
       if (!sentEmail) {
         await pool.query("DELETE FROM pin_reset WHERE resetPin_id = ?", [
-          resetPin_id,
+          result.insertId,
         ]);
         return res
           .status(400)
-          .json({ error: "Failed to send email. Try again later.s" });
+          .json({ error: "Failed to send email. Try again later" });
       } else {
         return res
           .status(200)
@@ -546,5 +545,31 @@ export const updateUser = async (req, res) => {
   } catch (error) {
     console.error("Error updating user:", error);
     return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const getUserById = async (req, res) => {
+  const { email } = req.query;
+  try {
+    const [userRows] = await pool.query(
+      `SELECT 
+      u.user_id,
+      u.username,
+      u.email,
+      u.master_password,   
+      r.role_name
+        FROM register_users u
+        JOIN user_roles ur ON u.user_id = ur.user_id
+        JOIN roles r ON ur.role_id = r.role_id
+        WHERE u.email = ?`,
+      [email]
+    );
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.status(200).json(userRows[0]);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };

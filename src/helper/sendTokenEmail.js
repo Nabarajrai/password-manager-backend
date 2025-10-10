@@ -109,7 +109,7 @@ export const sendTokenEmail = async ({
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent:", info.messageId);
+    console.log("Email Info", info);
     return true;
   } catch (error) {
     console.error("Error sending token email:", error);

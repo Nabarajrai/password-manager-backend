@@ -131,7 +131,7 @@ export const loginUser = async (req, res) => {
       u.user_id,
       u.username,
       u.email,
-      u.master_password,   -- ✅ add this!
+      u.master_password,   
       r.role_name
    FROM register_users u
    JOIN user_roles ur ON u.user_id = ur.user_id
@@ -156,17 +156,23 @@ export const loginUser = async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user.user_id }, `${JWTSECRET}`, {
-      expiresIn: "1h",
-    });
+    const token = jwt.sign(
+      { userId: user.user_id, email: user.email },
+      `${JWTSECRET}`,
+      {
+        expiresIn: "1h",
+      }
+    );
 
     // Set token in cookie (optional)
-    res.cookie("access_token", token, { httpOnly: true, secure: true });
+    res.cookie("access_token", token, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     return res.status(200).json({
       message: "Login successful",
-      token,
-      data: user,
       status: "success",
     });
   } catch (error) {
@@ -181,7 +187,8 @@ export const logOutUser = (req, res) => {
   // Clear the access token cookie
   res.clearCookie("access_token", {
     secure: true,
-    sameSite: "none",
+    sameSite: "strict",
+    httpOnly: true,
   });
   return res
     .status(200)
@@ -284,5 +291,23 @@ export const pinServiceStatus = async (req, res) => {
       status: "error",
       error: "Internal server error",
     });
+  }
+};
+
+export const verifyToken = async (req, res) => {
+  const token = req.cookies.access_token;
+  const JWTSECRET = process.env.JWT_SECRET;
+  if (!token) {
+    return res.status(400).json({ error: "Token is required" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWTSECRET);
+    return res.status(200).json({ authenticated: true, user: decoded });
+  } catch (error) {
+    console.error("Error verifying token:", error);
+    return res
+      .status(401)
+      .json({ valid: false, error: "Invalid or expired token" });
   }
 };
