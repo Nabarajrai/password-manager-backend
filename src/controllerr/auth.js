@@ -132,7 +132,8 @@ export const loginUser = async (req, res) => {
       u.username,
       u.email,
       u.master_password,   
-      r.role_name
+      r.role_name,
+      u.last_password_change
    FROM register_users u
    JOIN user_roles ur ON u.user_id = ur.user_id
    JOIN roles r ON ur.role_id = r.role_id
@@ -157,7 +158,11 @@ export const loginUser = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.user_id, email: user.email },
+      {
+        userId: user.user_id,
+        email: user.email,
+        expiredAt: user.last_password_change,
+      },
       `${JWTSECRET}`,
       {
         expiresIn: "1h",
@@ -303,6 +308,17 @@ export const verifyToken = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWTSECRET);
+    //check password expiry (90 days)
+    // const passwordAgeDays = Math.floor(
+    //   (Date.now() - new Date(user.decoded.expiredAt).getTime()) /
+    //     (1000 * 60 * 60 * 24)
+    // );
+    // if (passwordAgeDays > 90) {
+    //   return res.status(403).json({
+    //     message: "Password expired. Please reset your password.",
+    //     status: "expired",
+    //   });
+    // }
     return res.status(200).json({ authenticated: true, user: decoded });
   } catch (error) {
     console.error("Error verifying token:", error);
