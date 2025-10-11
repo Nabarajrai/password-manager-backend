@@ -6,6 +6,7 @@ import {
   logOutUser,
   forgotAdminPassword,
   pinServiceStatus,
+  verifyToken,
 } from "../controllerr/auth.js";
 
 //middleware
@@ -17,5 +18,6 @@ router.post("/login", loginUser);
 router.post("/logout", logOutUser);
 router.post("/forgot-admin-password", forgotAdminPassword);
 router.post("/pin-service", authenticateToken, pinServiceStatus);
+router.get("/verify-token", verifyToken);
 
 export default router;
