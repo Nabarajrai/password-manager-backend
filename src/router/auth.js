@@ -7,6 +7,7 @@ import {
   forgotAdminPassword,
   pinServiceStatus,
   verifyToken,
+  updateCredentials,
 } from "../controllerr/auth.js";
 
 //middleware
@@ -19,5 +20,6 @@ router.post("/logout", logOutUser);
 router.post("/forgot-admin-password", forgotAdminPassword);
 router.post("/pin-service", authenticateToken, pinServiceStatus);
 router.get("/verify-token", verifyToken);
+router.patch("/update-credentials", authenticateToken, updateCredentials);
 
 export default router;

@@ -308,22 +308,89 @@ export const verifyToken = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWTSECRET);
-    //check password expiry (90 days)
-    // const passwordAgeDays = Math.floor(
-    //   (Date.now() - new Date(user.decoded.expiredAt).getTime()) /
-    //     (1000 * 60 * 60 * 24)
-    // );
-    // if (passwordAgeDays > 90) {
-    //   return res.status(403).json({
-    //     message: "Password expired. Please reset your password.",
-    //     status: "expired",
-    //   });
-    // }
     return res.status(200).json({ authenticated: true, user: decoded });
   } catch (error) {
     console.error("Error verifying token:", error);
     return res
       .status(401)
       .json({ valid: false, error: "Invalid or expired token" });
+  }
+};
+
+export const updateCredentials = async (req, res) => {
+  const { userId, newPassword, newPin } = req.body;
+  console.log("Request body:", req.body);
+  const SALTNUMBER = parseInt(process.env.GEN_SALT, 10) || 10;
+
+  if (!userId || !newPassword || !newPin) {
+    return res.status(400).json({
+      error: "userId, new password, and new PIN are required",
+    });
+  }
+
+  if (!checkPasswordValid(newPassword)) {
+    return res.status(400).json({
+      error:
+        "Password must be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character",
+    });
+  }
+
+  if (!checkPinValid(newPin)) {
+    return res.status(400).json({ error: "Invalid PIN format" });
+  }
+
+  try {
+    // ✅ Fetch current password and PIN
+    const [userRows] = await pool.query(
+      `SELECT user_id, master_password, pin_hash 
+       FROM register_users 
+       WHERE user_id = ?`,
+      [userId]
+    );
+
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const user = userRows[0];
+
+    // ✅ Block reuse of old password
+    const isSamePassword = await bcrypt.compare(
+      newPassword,
+      user.master_password
+    );
+    if (isSamePassword) {
+      return res
+        .status(400)
+        .json({ error: "You cannot reuse your previous password" });
+    }
+
+    // ✅ Block reuse of old PIN
+    const isSamePin = await bcrypt.compare(newPin, user.pin_hash);
+    if (isSamePin) {
+      return res
+        .status(400)
+        .json({ error: "You cannot reuse your previous PIN" });
+    }
+
+    // ✅ Hash new credentials
+    const salt = bcrypt.genSaltSync(SALTNUMBER);
+    const hashedPassword = bcrypt.hashSync(newPassword, salt);
+    const hashedPin = bcrypt.hashSync(newPin, salt);
+
+    // ✅ Update database
+    await pool.query(
+      `UPDATE register_users 
+       SET master_password = ?, pin_hash = ?, last_password_change = NOW() 
+       WHERE user_id = ?`,
+      [hashedPassword, hashedPin, user.user_id]
+    );
+
+    return res
+      .status(200)
+      .json({ message: "Credentials updated successfully" });
+  } catch (error) {
+    console.error("Error updating credentials:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
