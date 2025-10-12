@@ -53,11 +53,13 @@ export const sharePasswordEntry = async (req, res) => {
 
     // 2. Check if password exists and find owner
     const [pwRows] = await pool.query(
-      "SELECT user_id AS owner_id FROM passwords WHERE password_id = ?",
-      [password_id]
+      "SELECT user_id AS owner_id FROM passwords WHERE password_id = ? and user_id = ?",
+      [password_id, user_id]
     );
     if (!pwRows.length) {
-      return res.status(404).json({ error: "Password not found" });
+      return res
+        .status(403)
+        .json({ error: "Not authorized to share this password" });
     }
     console.log("pwRows:", pwRows);
     console.log("owner_id:", pwRows[0]);

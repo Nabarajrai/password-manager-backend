@@ -12,6 +12,7 @@ export const getAllUsers = async (req, res) => {
           ru.email,
           ru.created_at,
           ru.updated_at,
+          ru.last_password_change,
           r.role_id,
           r.role_name,
           'registered' AS type
