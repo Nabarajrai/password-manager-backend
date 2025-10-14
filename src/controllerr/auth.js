@@ -319,7 +319,6 @@ export const verifyToken = async (req, res) => {
 
 export const updateCredentials = async (req, res) => {
   const { userId, newPassword, newPin } = req.body;
-  console.log("Request body:", req.body);
   const SALTNUMBER = parseInt(process.env.GEN_SALT, 10) || 10;
 
   if (!userId || !newPassword || !newPin) {

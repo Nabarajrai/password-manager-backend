@@ -385,7 +385,6 @@ export const sentResetPasswordLink = async (req, res) => {
         hour: 1,
       };
       const sentEmail = await sendTokenEmail(emailOptions);
-      console.log("sentEmail", result);
 
       if (!sentEmail) {
         await pool.query("DELETE FROM password_resets WHERE resetPass_id = ?", [

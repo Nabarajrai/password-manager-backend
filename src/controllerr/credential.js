@@ -61,8 +61,6 @@ export const sharePasswordEntry = async (req, res) => {
         .status(403)
         .json({ error: "Not authorized to share this password" });
     }
-    console.log("pwRows:", pwRows);
-    console.log("owner_id:", pwRows[0]);
     const ownerId = pwRows[0].owner_id;
 
     // 3. Verify if user_id is allowed (owner or has EDIT permission)
