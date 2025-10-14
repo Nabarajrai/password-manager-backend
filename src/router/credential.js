@@ -8,6 +8,7 @@ import {
   deletePassword,
   getAllPasswords,
   getPasswordById,
+  getSecurityScore,
 } from "../controllerr/credential.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
@@ -24,5 +25,6 @@ router.put("/update-password", authenticateToken, updatePassword);
 router.delete("/remove-password", authenticateToken, deletePassword);
 router.get("/get-all-passwords", authenticateToken, getAllPasswords);
 router.get("/get-password-by-id", authenticateToken, getPasswordById);
+router.get("/get-security-score", authenticateToken, getSecurityScore);
 
 export default router;
