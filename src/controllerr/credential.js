@@ -452,7 +452,7 @@ export const getSecurityScore = async (req, res) => {
     const averageScore = totalScore / rows.length;
 
     // 3. Determine overall strength label
-    const labels = ["Weak", "Fair", "Good", "Strong", "Very Strong"];
+    const labels = ["WEAK", "FAIR", "GOOD", "STRONG", "VERY STRONG"];
     const strengthLabel = labels[Math.round(averageScore) - 1] || "Weak";
 
     return res.json({
