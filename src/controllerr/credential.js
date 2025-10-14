@@ -413,3 +413,57 @@ export const getPasswordById = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const getSecurityScore = async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+
+    // 1. Fetch all passwords for the user
+    const [rows] = await pool.query(
+      "SELECT encrypted_password FROM passwords WHERE user_id = ?",
+      [userId]
+    );
+
+    if (!rows || rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No passwords found for this user" });
+    }
+
+    // 2. Decrypt and analyze each password
+    let totalScore = 0;
+    rows.forEach((row) => {
+      const decrypted = decryptPassword(row.encrypted_password);
+      // Simple scoring: length + variety of char types
+      let score = 0;
+      if (decrypted.length >= 8) score += 1;
+      if (decrypted.length >= 12) score += 1;
+      if (decrypted.length >= 16) score += 1;
+      if (/[A-Z]/.test(decrypted)) score += 1;
+      if (/[a-z]/.test(decrypted)) score += 1;
+      if (/[0-9]/.test(decrypted)) score += 1;
+      if (/[^A-Za-z0-9]/.test(decrypted)) score += 1;
+      if (score > 5) score = 5; // Cap max score
+      totalScore += score;
+    });
+
+    const averageScore = totalScore / rows.length;
+
+    // 3. Determine overall strength label
+    const labels = ["Weak", "Fair", "Good", "Strong", "Very Strong"];
+    const strengthLabel = labels[Math.round(averageScore) - 1] || "Weak";
+
+    return res.json({
+      total_passwords: rows.length,
+      average_score: averageScore.toFixed(2),
+      strength_label: strengthLabel,
+    });
+  } catch (err) {
+    console.error("Error in getSecurityScore:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
