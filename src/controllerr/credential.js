@@ -465,3 +465,36 @@ export const getSecurityScore = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const getAllPasswordScore = async (req, res) => {
+  const userId = req.query.userId;
+  try {
+    const [rows] = await pool.query(
+      `SELECT title, username, encrypted_password FROM passwords WHERE user_id = ?`,
+      [userId]
+    );
+    const scores = rows.map((row) => {
+      const decrypted = decryptPassword(row.encrypted_password);
+      let score = 0;
+      if (decrypted.length >= 8) score += 1;
+      if (decrypted.length >= 12) score += 1;
+      if (decrypted.length >= 16) score += 1;
+      if (/[A-Z]/.test(decrypted)) score += 1;
+      if (/[a-z]/.test(decrypted)) score += 1;
+      if (/[0-9]/.test(decrypted)) score += 1;
+      if (/[^A-Za-z0-9]/.test(decrypted)) score += 1;
+      if (score > 5) score = 5; // Cap max score
+      const labels = ["WEAK", "FAIR", "GOOD", "STRONG", "VERY STRONG"];
+      const strengthLabel = labels[score - 1] || "WEAK";
+      return {
+        Account: row.title,
+        Username: row.username,
+        Strength_Label: strengthLabel,
+      };
+    });
+    return res.json({ data: scores });
+  } catch (err) {
+    console.error("Error in getAllPasswordScore:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
